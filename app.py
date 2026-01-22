@@ -3,13 +3,8 @@ from flask_mysqldb import MySQL
 from flask_socketio import join_room, leave_room, send, SocketIO
 from string import ascii_uppercase
 from flask_session import Session
-import jsonpickle
 import random
-# from passlib.hash import sha256_crypt
-# from werkzeug.security import generate_password_hash, check_password_hash
-# from flask_socketio import Socketio, join_room, leave_room
-# API_KEY = 'AIzaSyBv6GO3l1kXkyZFR5YfGWJHg-0-ue6iAJY'
-# map_client=googlemaps.Client(API_KEY)
+
 app = Flask(__name__)
 app.secret_key = "supers secret key"
 app.config["SESSION_PERMANENT"] = False
@@ -19,30 +14,23 @@ socketio = SocketIO(app)
 
 rooms = {}
 
-def generate_unique_code(length):
-    while True:
-        code = ""
-        for _ in range(length):
-            code += random.choice(ascii_uppercase)
-        
-        if code not in rooms:
-            break
-    
-    return code
-
-
-
 app.config['MYSQL_HOST']= "localhost"
 app.config['MYSQL_USER']= "root"
-app.config['MYSQL_PASSWORD']= "praval@123"
+app.config['MYSQL_PASSWORD']= "mysql@123"
 app.config['MYSQL_DB']= "campuspool"
 mysql=MySQL(app)
+
+
 @app.route('/')
 def home():
     return render_template('home.html')
+
+
 @app.route('/about')
 def about():
     return render_template('home.html')
+
+
 @app.route('/signup',methods=['GET','POST'])
 def signup():
     if request.method == 'POST':
@@ -67,19 +55,16 @@ def signup():
                 return render_template('home.html')
             else:
                 return render_template('errors.html',error="Passwords dont match")
-            
-    
-
-            # passwords=generate_password_hash(password)
-
     return render_template('signup.html')
+
+
 @app.route('/user',methods=['GET','POST'])
 def user():
     return render_template('user.html')
 
+
 @app.route('/login',methods=['GET','POST'])
 def login():
-    # session=[]
     if request.method == 'POST':
         email = request.form['email']
         password=request.form['password']
@@ -98,10 +83,10 @@ def login():
             return render_template('user.html')
         else:
             # Account doesnt exist or username/password incorrect
-            
             return render_template('login.html')
-            
     return render_template('login.html')
+
+
 @app.route('/book',methods=['GET','POST'])
 def book():  
     if request.method == 'POST':
@@ -116,8 +101,9 @@ def book():
             return render_template('error.html',)
         else:
             return render_template('result.html', data=account,)
-
     return render_template('book.html')
+
+
 @app.route('/bookings',methods=['GET','POST'])
 def bookings():  
     if session :
@@ -126,7 +112,6 @@ def bookings():
         return render_template('login.html')
 
 
-    
 @app.route('/register',methods=['GET','POST'])
 def register():
     if request.method == 'POST':
@@ -140,10 +125,9 @@ def register():
         mysql.connection.commit()
         cur.close()
         return render_template('user.html',data=passengers)
-
-
-
     return render_template('register.html')
+
+
 @app.route('/result',methods=['GET','POST'])
 def result():  
     if request.method == 'POST':
@@ -156,8 +140,9 @@ def result():
         cur.execute('SELECT * FROM booking WHERE s_id = %s AND time =%s and approve<2',(id,time))
         accounts = cur.fetchone()    
         return render_template('approve.html', data=account,datas=accounts)
-
     return render_template('result.html')
+
+
 @app.route('/approve',methods=['GET','POST'])
 def approve():  
     if request.method == 'POST':
@@ -172,9 +157,9 @@ def approve():
         mysql.connection.commit()
         cur.close()   
         return render_template('user.html')
-        
-
     return render_template('approve.html')
+
+
 @app.route('/requests',methods=['GET','POST'])
 def requests():
     id=session[1]
@@ -184,6 +169,8 @@ def requests():
     mysql.connection.commit()
     cur.close()
     return render_template('requests.html',data=accounts)
+
+
 @app.route('/confirm',methods=['GET','POST'])
 def confirm():
     if request.method == 'POST':
@@ -199,7 +186,9 @@ def confirm():
         account = cur.fetchone()
         mysql.connection.commit()
         cur.close()
-        return render_template('confirm.html',data=accounts,datas=account)  
+        return render_template('confirm.html',data=accounts,datas=account) 
+
+
 @app.route("/chatreq", methods=["POST", "GET"])
 def chatreq():
     id=session[1]
@@ -208,9 +197,9 @@ def chatreq():
     account = cur.fetchall()
     return render_template("chatreq.html",data=account)
 
+
 @app.route("/chathome", methods=["POST", "GET"])
 def chathome():
-    # session.clear()
     if request.method == "POST":
         name = session[1]
         code = request.form.get("code")
@@ -228,7 +217,6 @@ def chathome():
         room = code
         if create != False:
             id=request.form.get("id")
-            # room = generate_unique_code(4)
             cur=mysql.connection.cursor()
             cur.execute('SELECT * FROM request WHERE id=%s',(id,))
             account = cur.fetchone()
@@ -244,12 +232,9 @@ def chathome():
         elif code not in rooms:
             return 'Room does not exist.'
             return render_template("home.html", error="Room does not exist.", code=code, name=name)
-        
         session[6] = room
         return redirect(url_for("room"))
-
     return render_template("user.html")
-
 
 
 @app.route("/room", methods=["POST", "GET"])
@@ -267,15 +252,18 @@ def room():
         else:
             return redirect(url_for("chathome"))
     return render_template("room.html", code=room, messages=rooms[room]["messages"],data=account)
+
+
 @app.route("/final", methods=["POST", "GET"])
 def final():
     return render_template('final.html')
+
+
 @socketio.on("message")
 def message(data):
     room = session.get(6)
     if room not in rooms:
-        return 
-    
+        return
     content = {
         "name": session.get(2),
         "message": data["data"]
@@ -283,6 +271,7 @@ def message(data):
     send(content, to=room)
     rooms[room]["messages"].append(content)
     print(f"{session.get(2)} said: {data['data']}")
+
 
 @socketio.on("connect")
 def connect(auth):
@@ -293,29 +282,30 @@ def connect(auth):
     if room not in rooms:
         leave_room(room)
         return
-    
     join_room(room)
     send({"name": name, "message": "has entered the room"}, to=room)
     rooms[room]["members"] += 1
     print(f"{name} joined room {room}")
+
 
 @socketio.on("disconnect")
 def disconnect():
     room = session.get(6)
     name = session.get(2)
     leave_room(room)
-
     if room in rooms:
         rooms[room]["members"] -= 1
         if rooms[room]["members"] <= 0:
             del rooms[room]
-    
     send({"name": name, "message": "has left the room"}, to=room)
     print(f"{name} has left the room {room}")
+
+
 @app.route('/logout',methods=['GET','POST'])
 def logout():
     session.clear()
     return render_template('home.html')
+
 
 @app.route('/confirmed',methods=['GET','POST'])
 def confirmed():
@@ -334,9 +324,9 @@ def registered():
     cur=mysql.connection.cursor()
     cur.execute('SELECT * FROM booking WHERE s_id=%s', (id,))
     account = cur.fetchall()
-    
     return render_template('registered.html',data=account)
     return render_template('registered.html')
+
 @app.route('/yes',methods=['GET','POST'])
 def yes():
     ids=request.form.get("ids")
@@ -347,42 +337,24 @@ def yes():
     id=account[1] 
     curs.execute("UPDATE request SET approve=approve+1 where id=%s", [[ids]])
     mysql.connection.commit()
-         
     date=str(account[3])
     time=str(account[4])
     passengers1=str(account[6])
     curs.execute('SELECT * FROM booking WHERE s_id=%s AND date=%s AND time=%s', [[id],[date],[time]])
     accounts = curs.fetchone()
-    curs=mysql.connection.cursor()
-    passengers2=str(accounts[4])
-    excess=int(passengers2)-int(passengers1)
-    curs.execute("UPDATE booking SET approve=approve+1 where s_id=%s AND date=%s AND time=%s", [[id],[date],[time]])
-    mysql.connection.commit()       # return (str(id))
-    # date=str(account[3])
-    # time=str(account[4])
+    passengers2= accounts[4] - account[6]
     
-    # if excess >0:
-    #     cur=mysql.connection.cursor()
-    #     cur.execute('UPDATE booking set passengers=%s WHERE id=%s', (excess,accounts[0],))
-    #     mysql.connection.commit()
-    #     cur.execute('DELETE FROM chat WHERE id=%s',([cid]))
-    #     cur=mysql.connection.cursor()
-    #     # cur.execute('DELETE FROM request WHERE id=%s',([ids]))
-    #     mysql.connection.commit()
-    # elif excess == 0:
-    #     cur=mysql.connection.cursor()
-    #     cur.execute('DELETE FROM booking where id=%s', (accounts[0],))
-    #     mysql.connection.commit()
-    #     cur=mysql.connection.cursor()
-    #     # cur.execute('DELETE FROM chat WHERE id=%s',(cid))
-    #     cur.execute('DELETE FROM request WHERE id=%s',([ids]))
-    #     mysql.connection.commit()
-    # else :
-    #     cur=mysql.connection.cursor()
-    #     # cur.execute('DELETE FROM chat WHERE id=%s',(cid))
-    #     cur.execute('DELETE FROM request WHERE id=%s',(ids))
-    #     mysql.connection.commit()
+    if account[7]>1:
+        curs = mysql.connection.cursor()
+        curs.callproc('InsertRemainingPassenger', [accounts[1], accounts[2], accounts[3], passengers2, accounts[5]])
+        mysql.connection.commit()
+    
+    curs=mysql.connection.cursor()
+
+    #curs.execute("UPDATE booking SET approve=approve+1 where s_id=%s AND date=%s AND time=%s", [[id],[date],[time]])
+    #mysql.connection.commit()      
     return redirect(url_for('final'))
+
 
 @app.route('/edit',methods=['GET','POST'])
 def edit():
@@ -400,12 +372,9 @@ def edit():
         mysql.connection.commit()
         cur.close()
         return redirect(url_for('registered'))
-
-    
-    
-
-
     return render_template('edit.html',data=accounts) 
+
+
 @app.route('/no',methods=['GET','POST'])
 def no():
     id=request.form.get("ids")
@@ -413,8 +382,9 @@ def no():
     cur=mysql.connection.cursor()
     cur.execute('DELETE FROM request WHERE id=%s', (id,))
     cur.execute('DELETE FROM chat WHERE id=%s',([cid]))
-
     mysql.connection.commit()
     return redirect(url_for('final'))
+
+
 if __name__ == "__main__":
     socketio.run(app,debug=True,port=5000)
