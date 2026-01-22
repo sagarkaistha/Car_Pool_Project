@@ -1,4 +1,4 @@
-# Carr POOLING Just got a little fun ?
+# Car POOLING Just got a little fun ?
 
 Welcome to Car pool, where seamless travel experiences begin!
 
